@@ -64,8 +64,48 @@ body {
     border-bottom-color: #e05600;
 }
 
+/* Pokemon Sub Navigation */
+.pokemon-sub-nav {
+    display: flex;
+    background: #36393f;
+    padding: 10px 20px;
+    gap: 10px;
+    border-bottom: 1px solid rgba(247, 186, 20, 0.3);
+}
+
+.pokemon-sub-btn {
+    background: transparent;
+    color: #b9bbbe;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 2px solid transparent;
+}
+
+.pokemon-sub-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.pokemon-sub-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.sub-icon {
+    font-size: 1rem;
+    background-color: transparent;
+}
+
 .nav-icon {
     font-size: 1.1rem;
+    background-color: transparent;
 }
 
 /* Aggiusta il gap in #app per le nuove tab */

@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await initializeFinanceData();
 
-    showGeneration(1);
+    showFinancePage();
 });
 
 function setupEventDelegation() {
@@ -134,6 +134,45 @@ function setupEventDelegation() {
 
 // Navigation Setup
 function setupNavigation() {
+    // Main navigation
+    const mainNavBtns = document.querySelectorAll('.main-nav-btn');
+    mainNavBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const page = btn.getAttribute('data-page');
+
+            // Update active button
+            mainNavBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Switch main pages
+            if (page === 'finance') {
+                showFinancePage();
+            } else if (page === 'pokemon') {
+                showPokemonPage();
+            }
+        });
+    });
+
+    // Pokemon sub navigation
+    const pokemonSubBtns = document.querySelectorAll('.pokemon-sub-btn');
+    pokemonSubBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const subtab = btn.getAttribute('data-subtab');
+
+            // Update active button
+            pokemonSubBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Switch Pokemon sub pages
+            if (subtab === 'collection') {
+                showCollectionPage();
+            } else if (subtab === 'market') {
+                showMarketPage();
+            }
+        });
+    });
+
+    // Generation navigation
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const gen = btn.getAttribute('data-gen');
@@ -144,37 +183,18 @@ function setupNavigation() {
 
             showGeneration(parseInt(gen));
         });
-
-        const sortPokemonSelect = document.getElementById('sort-pokemon');
-        if (sortPokemonSelect) {
-            sortPokemonSelect.addEventListener('change', () => {
-                if (currentPokemonData.length > 0) {
-                    const sortedData = sortPokemonData(currentPokemonData, sortPokemonSelect.value);
-                    displayPokemonList(sortedData);
-                }
-            });
-        }
     });
 
-    const mainNavBtns = document.querySelectorAll('.main-nav-btn');
-    mainNavBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const page = btn.getAttribute('data-page');
-
-            // Update active button
-            mainNavBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // Switch pages
-            if (page === 'collection') {
-                showCollectionPage();
-            } else if (page === 'market') {
-                showMarketPage();
-            } else if (page === 'finance') {
-                showFinancePage();
+    // Sort select
+    const sortPokemonSelect = document.getElementById('sort-pokemon');
+    if (sortPokemonSelect) {
+        sortPokemonSelect.addEventListener('change', () => {
+            if (currentPokemonData.length > 0) {
+                const sortedData = sortPokemonData(currentPokemonData, sortPokemonSelect.value);
+                displayPokemonList(sortedData);
             }
         });
-    });
+    }
 }
 
 function showCollectionPage() {
@@ -195,7 +215,7 @@ function showMarketPage() {
     pages.forEach(page => page.classList.remove('active'));
     marketPage.classList.add('active');
 
-    // Nascondi nav delle generazioni ma mantieni header
+    // Nascondi nav delle generazioni ma mantieni header visibile per il market
     document.querySelector('.nav').style.display = 'none';
     document.querySelector('.header').style.display = 'none';
 
@@ -1521,6 +1541,9 @@ function openMonthPicker() {
 }
 
 function showFinancePage() {
+    // Hide Pokemon sub navigation
+    document.querySelector('.pokemon-sub-nav').style.display = 'none';
+
     pages.forEach(page => page.classList.remove('active'));
     financePage.classList.add('active');
 
@@ -1533,6 +1556,21 @@ function showFinancePage() {
 
     // Load default tab (transactions)
     switchFinanceTab('transactions');
+}
+
+function showPokemonPage() {
+    // Show Pokemon sub navigation
+    document.querySelector('.pokemon-sub-nav').style.display = 'flex';
+
+    // Get active subtab or default to collection
+    const activeSubBtn = document.querySelector('.pokemon-sub-btn.active');
+    const subtab = activeSubBtn ? activeSubBtn.getAttribute('data-subtab') : 'collection';
+
+    if (subtab === 'collection') {
+        showCollectionPage();
+    } else if (subtab === 'market') {
+        showMarketPage();
+    }
 }
 
 // Aggiungi questa nuova funzione

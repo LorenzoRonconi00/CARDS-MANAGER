@@ -12,17 +12,24 @@
     <div id="app">
         <!-- Main Navigation Tabs (da aggiungere dopo <div id="app">) -->
         <nav class="main-nav">
-            <button class="main-nav-btn active" data-page="collection">
-                <span class="nav-icon">📋</span>
-                POKEDEX
-            </button>
-            <button class="main-nav-btn" data-page="market">
-                <span class="nav-icon">🛒</span>
-                POKEMON MARKET
-            </button>
-            <button class="main-nav-btn" data-page="finance">
+            <button class="main-nav-btn active" data-page="finance">
                 <span class="nav-icon">💰</span>
                 FINANZE
+            </button>
+            <button class="main-nav-btn" data-page="pokemon">
+                <span class="nav-icon">🎮</span>
+                POKEMON
+            </button>
+        </nav>
+
+        <nav class="pokemon-sub-nav" style="display: none;">
+            <button class="pokemon-sub-btn active" data-subtab="collection">
+                <span class="sub-icon">📋</span>
+                Pokedex
+            </button>
+            <button class="pokemon-sub-btn" data-subtab="market">
+                <span class="sub-icon">🛒</span>
+                Pokemon Market
             </button>
         </nav>
 

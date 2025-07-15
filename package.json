@@ -1,7 +1,7 @@
 {
-  "name": "cards-manager",
+  "name": "moneydex",
   "version": "1.0.0",
-  "description": "Desktop application for managing Pokemon trading card collection",
+  "description": "Desktop application for managing your finances and trading cards pokedex",
   "main": "dist/main.js",
   "homepage": "./",
   "scripts": {
@@ -24,7 +24,13 @@
     "trading-cards",
     "electron",
     "typescript",
-    "mongodb"
+    "mongodb",
+    "finances",
+    "javascript",
+    "marketplace",
+    "react",
+    "css",
+    "html"
   ],
   "author": "Frank",
   "license": "MIT",
@@ -42,8 +48,8 @@
     "node-fetch": "^2.7.0"
   },
   "build": {
-    "appId": "com.frank.cards-manager",
-    "productName": "Pokemon Collection Manager",
+    "appId": "com.frank.moneydex",
+    "productName": "Money Dex",
     "directories": {
       "output": "build"
     },
