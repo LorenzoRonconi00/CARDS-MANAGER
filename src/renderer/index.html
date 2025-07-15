@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POKEMON CARDS MANAGER</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Main Navigation Tabs (da aggiungere dopo <div id="app">) -->
+        <nav class="main-nav">
+            <button class="main-nav-btn active" data-page="collection">
+                <span class="nav-icon">📋</span>
+                POKEDEX
+            </button>
+            <button class="main-nav-btn" data-page="market">
+                <span class="nav-icon">🛒</span>
+                POKEMON MARKET
+            </button>
+            <button class="main-nav-btn" data-page="finance">
+                <span class="nav-icon">💰</span>
+                FINANZE
+            </button>
+        </nav>
+
+        <!-- Header -->
+        <header class="header">
+            <h1 style="visibility: hidden;">POKEMON CARDS MANAGER</h1>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Cerca per nome o numero..." />
+                <button id="search-btn">🔍</button>
+            </div>
+            <div id="stats" class="stats">
+                <span>Rimanenti: <span id="remaining-count">-</span></span>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <button class="nav-btn active" data-gen="1">Gen 1</button>
+            <button class="nav-btn" data-gen="2">Gen 2</button>
+            <button class="nav-btn" data-gen="3">Gen 3</button>
+            <button class="nav-btn" data-gen="4">Gen 4</button>
+            <button class="nav-btn" data-gen="5">Gen 5</button>
+            <button class="nav-btn" data-gen="6">Gen 6</button>
+            <button class="nav-btn" data-gen="7">Gen 7</button>
+            <button class="nav-btn" data-gen="8">Gen 8</button>
+            <button class="nav-btn" data-gen="9">Gen 9</button>
+        </nav>
+
+        <!-- Content -->
+        <main class="main">
+            <!-- Generation Pages -->
+            <div id="generation-page" class="page active">
+                <div class="generation-header">
+                    <h2 id="gen-title" class="generation-title">Generazione 1</h2>
+                    <div class="generation-controls">
+                        <div class="generation-sort-controls">
+                            <label for="sort-pokemon">Ordina per:</label>
+                            <select id="sort-pokemon" class="sort-select">
+                                <option value="pokedex">Numero Pokédex</option>
+                                <option value="name">Nome (A-Z)</option>
+                                <option value="name-desc">Nome (Z-A)</option>
+                                <option value="price-asc">Prezzo crescente</option>
+                                <option value="price-desc">Prezzo decrescente</option>
+                            </select>
+                        </div>
+                        <div class="generation-total-price">
+                            <span class="label">STIMA:</span>
+                            <span id="total-price">€0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="loading" class="loading">Caricamento Pokemon...</div>
+                <div id="pokemon-list" class="pokemon-list"></div>
+            </div>
+
+            <!-- Market Page -->
+            <div id="market-page" class="page">
+                <div class="market-header">
+                    <h2>Market</h2>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="purchases">Acquisti</button>
+                    <button class="tab-btn" data-tab="budget">Bilanci</button>
+                </div>
+
+                <!-- Purchases Tab -->
+                <div id="purchases-tab" class="tab-content active">
+                    <div class="purchases-controls">
+                        <button id="add-purchase-btn" class="add-purchase-btn">+ Aggiungi Acquisto</button>
+                        <div class="purchases-controls-right">
+                            <button id="delete-all-purchases-btn" class="delete-all-btn">🗑️ Elimina Tutti</button>
+                            <select id="sort-purchases" class="sort-select">
+                                <option value="date">Data (recenti)</option>
+                                <option value="price-asc">Prezzo crescente</option>
+                                <option value="price-desc">Prezzo decrescente</option>
+                                <option value="pokemon-id">Numero Pokédex</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="purchases-list" class="purchases-list"></div>
+                </div>
+
+                <!-- Budget Tab -->
+                <div id="budget-tab" class="tab-content">
+                    <div class="budget-content">
+                        <!-- Current Month Overview -->
+                        <div class="current-month-overview">
+                            <h3 id="current-month-title">Novembre 2024</h3>
+                            <div class="overview-cards">
+                                <div class="overview-card">
+                                    <div class="card-label">Speso questo mese</div>
+                                    <div class="card-value" id="month-spent">€0.00</div>
+                                    <div class="card-status" id="month-status">Entro budget</div>
+                                </div>
+                                <div class="overview-card">
+                                    <div class="card-label">Speso questa settimana</div>
+                                    <div class="card-value" id="week-spent">€0.00</div>
+                                    <div class="card-status" id="week-status">Entro budget</div>
+                                </div>
+                                <div class="overview-card">
+                                    <div class="card-label">Rimanente mensile</div>
+                                    <div class="card-value" id="remaining-monthly">€80.00</div>
+                                </div>
+                                <div class="overview-card">
+                                    <div class="card-label">Rimanente settimanale</div>
+                                    <div class="card-value" id="remaining-weekly">€20.00</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Weekly Chart -->
+                        <div class="weekly-chart-container">
+                            <h3>Spese Settimanali - Mese Corrente</h3>
+                            <div class="chart-wrapper">
+                                <div class="chart-legend">
+                                    <div class="legend-item">
+                                        <div class="legend-color budget-line"></div>
+                                        <span>Budget Settimanale (€20)</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color spent-bar-under"></div>
+                                        <span>Sotto Budget</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color spent-bar-exact"></div>
+                                        <span>Budget Raggiunto</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color spent-bar-over"></div>
+                                        <span>Sopra Budget</span>
+                                    </div>
+                                </div>
+                                <canvas id="weekly-chart" width="800" height="350"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Monthly History -->
+                        <div class="monthly-history">
+                            <h3>Cronologia Mensile</h3>
+                            <div class="history-table-container">
+                                <table class="history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mese</th>
+                                            <th>Spesa Totale</th>
+                                            <th>Budget</th>
+                                            <th>Differenza</th>
+                                            <th>Acquisti</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-table-body">
+                                        <!-- Popolato da JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="finance-page" class="page">
+                <div class="finance-header">
+                    <h2>Gestione Finanze</h2>
+                </div>
+
+                <!-- Finance Tabs -->
+                <div class="tabs">
+                    <button class="finance-tab-btn active" data-tab="transactions">Entrate & Uscite</button>
+                    <button class="finance-tab-btn" data-tab="budget">Bilanci Mensili</button>
+                </div>
+
+                <!-- Transactions Tab -->
+                <div id="transactions-tab" class="finance-tab-content active">
+                    <div class="transactions-controls">
+                        <button id="add-transaction-btn" class="add-transaction-btn">+ Aggiungi Transazione</button>
+                        <div class="transactions-controls-right">
+                            <select id="filter-category" class="filter-select">
+                                <option value="all">Tutte le categorie</option>
+                                <option value="income">Entrate</option>
+                                <option value="fisse">Spese Fisse</option>
+                                <option value="variabili">Spese Variabili</option>
+                                <option value="svago">Spese Svago</option>
+                                <option value="risparmi">Risparmi</option>
+                            </select>
+                            <select id="sort-transactions" class="sort-select">
+                                <option value="date">Data (recenti)</option>
+                                <option value="amount-desc">Importo decrescente</option>
+                                <option value="amount-asc">Importo crescente</option>
+                                <option value="category">Categoria</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Balance Summary -->
+                    <div class="balance-summary">
+                        <div class="balance-card income">
+                            <div class="balance-label">Entrate Totali</div>
+                            <div class="balance-value" id="total-income">€0.00</div>
+                        </div>
+                        <div class="balance-card expense">
+                            <div class="balance-label">Uscite Totali</div>
+                            <div class="balance-value" id="total-expenses">€0.00</div>
+                        </div>
+                        <div class="balance-card net">
+                            <div class="balance-label">Bilancio Netto</div>
+                            <div class="balance-value" id="net-balance">€0.00</div>
+                        </div>
+                    </div>
+
+                    <div id="transactions-list" class="transactions-list">
+                        <!-- Lista transazioni popolata dinamicamente -->
+                        <div class="transaction-item">
+                            <div class="transaction-date">15/11/2024</div>
+                            <div class="transaction-description">Stipendio Novembre</div>
+                            <div class="transaction-category income">Entrata</div>
+                            <div class="transaction-amount income">+€2,500.00</div>
+                            <button class="transaction-delete-btn">🗑️</button>
+                        </div>
+                        <div class="transaction-item">
+                            <div class="transaction-date">10/11/2024</div>
+                            <div class="transaction-description">Affitto</div>
+                            <div class="transaction-category fisse">Fisse</div>
+                            <div class="transaction-amount expense">-€800.00</div>
+                            <button class="transaction-delete-btn">🗑️</button>
+                        </div>
+                        <div class="transaction-item">
+                            <div class="transaction-date">08/11/2024</div>
+                            <div class="transaction-description">Spesa supermercato</div>
+                            <div class="transaction-category variabili">Variabili</div>
+                            <div class="transaction-amount expense">-€120.50</div>
+                            <button class="transaction-delete-btn">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Budget Tab -->
+                <div id="finance-budget-tab" class="finance-tab-content">
+                    <div class="monthly-analysis-content">
+                        <!-- Insights Section -->
+                        <div class="insights-section">
+                            <h3>💡 Insights del Mese</h3>
+                            <div id="insights-container" class="insights-container">
+                                <!-- Popolato dinamicamente -->
+                            </div>
+                        </div>
+
+                        <!-- Category Analysis -->
+                        <div class="category-analysis">
+                            <h3>🎯 Analisi per Categoria</h3>
+                            <div class="category-comparison-grid">
+                                <!-- Spese Fisse -->
+                                <div class="category-analysis-card fisse">
+                                    <div class="category-header">
+                                        <h4>Spese Fisse</h4>
+                                        <span class="target-badge">Target: 40%</span>
+                                    </div>
+                                    <div class="category-metrics">
+                                        <div class="metric">
+                                            <span class="metric-label">Speso</span>
+                                            <span class="metric-value" id="fisse-amount">€0</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">% su Entrate</span>
+                                            <span class="metric-value" id="fisse-percentage">0%</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">vs Mese Scorso</span>
+                                            <span class="metric-trend" id="fisse-trend">0%</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-status" id="fisse-status">Analizzando...</div>
+                                </div>
+
+                                <!-- Spese Variabili -->
+                                <div class="category-analysis-card variabili">
+                                    <div class="category-header">
+                                        <h4>Spese Variabili</h4>
+                                        <span class="target-badge">Target: 30%</span>
+                                    </div>
+                                    <div class="category-metrics">
+                                        <div class="metric">
+                                            <span class="metric-label">Speso</span>
+                                            <span class="metric-value" id="variabili-amount">€0</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">% su Entrate</span>
+                                            <span class="metric-value" id="variabili-percentage">0%</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">vs Mese Scorso</span>
+                                            <span class="metric-trend" id="variabili-trend">0%</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-status" id="variabili-status">Analizzando...</div>
+                                </div>
+
+                                <!-- Spese Svago -->
+                                <div class="category-analysis-card svago">
+                                    <div class="category-header">
+                                        <h4>Spese Svago</h4>
+                                        <span class="target-badge">Target: 15%</span>
+                                    </div>
+                                    <div class="category-metrics">
+                                        <div class="metric">
+                                            <span class="metric-label">Speso</span>
+                                            <span class="metric-value" id="svago-amount">€0</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">% su Entrate</span>
+                                            <span class="metric-value" id="svago-percentage">0%</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">vs Mese Scorso</span>
+                                            <span class="metric-trend" id="svago-trend">0%</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-status" id="svago-status">Analizzando...</div>
+                                </div>
+
+                                <!-- Risparmi -->
+                                <div class="category-analysis-card risparmi">
+                                    <div class="category-header">
+                                        <h4>Risparmi</h4>
+                                        <span class="target-badge">Obiettivo: 15%</span>
+                                    </div>
+                                    <div class="category-metrics">
+                                        <div class="metric">
+                                            <span class="metric-label">Risparmiato</span>
+                                            <span class="metric-value" id="risparmi-amount">€0</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">% su Entrate</span>
+                                            <span class="metric-value" id="risparmi-percentage">0%</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">vs Mese Scorso</span>
+                                            <span class="metric-trend" id="risparmi-trend">0%</span>
+                                        </div>
+                                    </div>
+                                    <div class="category-status" id="risparmi-status">Analizzando...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL Modal -->
+            <div id="url-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Aggiungi URL per <span id="url-pokemon-name"></span></h3>
+                        <button id="close-url-modal" class="close-btn">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="url-form">
+                            <div class="form-row">
+                                <label>URL (opzionale):</label>
+                                <input type="url" id="pokemon-url-input" class="form-input"
+                                    placeholder="https://esempio.com/pokemon-card">
+                            </div>
+                            <div class="form-row">
+                                <small style="color: #ccc;">
+                                    Inserisci l'URL della carta per accedervi rapidamente cliccando sul nome del
+                                    Pokémon.
+                                    Puoi lasciare vuoto se non hai un URL.
+                                </small>
+                            </div>
+                            <div class="url-buttons">
+                                <button id="save-url-btn" class="save-url-btn">Salva URL</button>
+                                <button id="skip-url-btn" class="skip-url-btn">Salta</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Purchase Modal -->
+            <div id="purchase-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Aggiungi Acquisto</h3>
+                        <button id="close-modal" class="close-btn">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="search-section">
+                            <label>Cerca Pokemon:</label>
+                            <div class="modal-search">
+                                <input type="text" id="modal-search-input" placeholder="Nome o numero...">
+                                <button id="modal-search-btn">🔍</button>
+                            </div>
+                            <div id="modal-search-results" class="search-results"></div>
+                        </div>
+
+                        <div id="selected-pokemon" class="selected-pokemon hidden">
+                            <div class="pokemon-info">
+                                <div class="pokemon-image">
+                                    <div id="selected-pokemon-placeholder" class="pokemon-placeholder">?</div>
+                                    <img id="selected-pokemon-img" src="" alt="" style="display: none;">
+                                </div>
+                                <div class="pokemon-details">
+                                    <h4 id="selected-pokemon-name"></h4>
+                                    <p id="selected-pokemon-id"></p>
+                                </div>
+                            </div>
+
+                            <div class="price-section">
+                                <label>Prezzo di partenza: <span id="base-price">€0.00</span></label>
+                                <label>Prezzo finale:</label>
+                                <input type="number" id="final-price" step="0.01" min="0" placeholder="0.00">
+                            </div>
+
+                            <div class="month-section">
+                                <label>Mese:</label>
+                                <div class="month-input-wrapper" onclick="openMonthPicker()">
+                                    <input type="month" id="purchase-month" readonly>
+                                    <span class="calendar-icon">📅</span>
+                                </div>
+                            </div>
+
+                            <button id="save-purchase" class="save-btn">Salva Acquisto</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="transaction-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Aggiungi Transazione</h3>
+                        <button id="close-transaction-modal" class="close-btn">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="transaction-form">
+                            <div class="form-row">
+                                <label>Tipo:</label>
+                                <select id="transaction-type" class="form-input">
+                                    <option value="expense">Uscita</option>
+                                    <option value="income">Entrata</option>
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <label>Categoria:</label>
+                                <select id="transaction-category" class="form-input">
+                                    <option value="fisse">Spese Fisse</option>
+                                    <option value="variabili">Spese Variabili</option>
+                                    <option value="svago">Spese Svago</option>
+                                    <option value="risparmi">Risparmi</option>
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <label>Descrizione:</label>
+                                <input type="text" id="transaction-description" class="form-input"
+                                    placeholder="es. Affitto, Spesa, Stipendio...">
+                            </div>
+
+                            <div class="form-row">
+                                <label>Importo (€):</label>
+                                <input type="number" id="transaction-amount" class="form-input" step="0.01" min="0"
+                                    placeholder="0.00">
+                            </div>
+
+                            <div class="form-row">
+                                <label>Data:</label>
+                                <input type="date" id="transaction-date" class="form-input">
+                            </div>
+
+                            <button id="save-transaction" class="save-transaction-btn">Salva Transazione</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

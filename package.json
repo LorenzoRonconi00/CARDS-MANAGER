@@ -1,0 +1,76 @@
+{
+  "name": "cards-manager",
+  "version": "1.0.0",
+  "description": "Desktop application for managing Pokemon trading card collection",
+  "main": "dist/main.js",
+  "homepage": "./",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc && electron dist/main.js",
+    "start": "electron dist/main.js",
+    "watch": "tsc --watch",
+    "dev-watch": "concurrently \"npm run watch\" \"wait-on dist/main.js && electron dist/main.js\"",
+    "clean": "rimraf dist",
+    "rebuild": "npm run clean && npm run build",
+    "pack": "electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:portable": "npm run build && electron-builder --win portable",
+    "prepack": "npm run build",
+    "predist": "npm run build"
+  },
+  "keywords": [
+    "pokemon",
+    "trading-cards",
+    "electron",
+    "typescript",
+    "mongodb"
+  ],
+  "author": "Frank",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "concurrently": "^8.2.2",
+    "electron": "^28.2.0",
+    "electron-builder": "^24.13.3",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "node-fetch": "^2.7.0"
+  },
+  "build": {
+    "appId": "com.frank.cards-manager",
+    "productName": "Pokemon Collection Manager",
+    "directories": {
+      "output": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "src/renderer/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "portable": {
+      "artifactName": "${productName} ${version} Portable.${ext}"
+    },
+    "compression": "maximum",
+    "nodeGypRebuild": false
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
