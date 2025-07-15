@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POKEMON CARDS MANAGER</title>
+    <title>MONEY DEX</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -95,6 +95,7 @@
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="purchases">Acquisti</button>
                     <button class="tab-btn" data-tab="budget">Bilanci</button>
+                    <button class="tab-btn" data-tab="planned">Programmati</button>
                 </div>
 
                 <!-- Purchases Tab -->
@@ -189,6 +190,21 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Planned Tab -->
+                <div id="planned-tab" class="tab-content">
+                    <div class="planned-controls">
+                        <button id="add-planned-btn" class="add-planned-btn">+ Aggiungi Acquisto Programmato</button>
+                        <div class="planned-info">
+                            <span class="info-text">Gli acquisti programmati non influenzano i bilanci finché non
+                                vengono completati</span>
+                        </div>
+                    </div>
+
+                    <div id="planned-groups-container" class="planned-groups-container">
+                        <!-- Gruppi di acquisti programmati popolati dinamicamente -->
                     </div>
                 </div>
             </div>
@@ -487,6 +503,87 @@
 
                             <button id="save-purchase" class="save-btn">Salva Acquisto</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Planned Purchase Modal -->
+            <div id="planned-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Aggiungi Acquisto Programmato</h3>
+                        <button id="close-planned-modal" class="close-btn">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="search-section">
+                            <label>Cerca Pokemon:</label>
+                            <div class="modal-search">
+                                <input type="text" id="planned-search-input" placeholder="Nome o numero...">
+                                <button id="planned-search-btn">🔍</button>
+                            </div>
+                            <div id="planned-search-results" class="search-results"></div>
+                        </div>
+
+                        <div id="selected-planned-pokemon" class="selected-pokemon hidden">
+                            <div class="pokemon-info">
+                                <div class="pokemon-image">
+                                    <div id="planned-pokemon-placeholder" class="pokemon-placeholder">?</div>
+                                    <img id="planned-pokemon-img" src="" alt="" style="display: none;">
+                                </div>
+                                <div class="pokemon-details">
+                                    <h4 id="planned-pokemon-name"></h4>
+                                    <p id="planned-pokemon-id"></p>
+                                </div>
+                            </div>
+
+                            <div class="price-section">
+                                <label>Prezzo di partenza: <span id="planned-base-price">€0.00</span></label>
+                                <small style="color: #ccc;">Il prezzo finale verrà definito al momento
+                                    dell'acquisto</small>
+                            </div>
+
+                            <div class="date-section">
+                                <label>Data prevista acquisto:</label>
+                                <input type="date" id="planned-date" class="form-input">
+                            </div>
+
+                            <button id="save-planned" class="save-btn">Salva Acquisto Programmato</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complete Purchase Modal -->
+            <div id="complete-purchase-modal" class="modal hidden">
+                <div class="modal-content modal-small">
+                    <div class="modal-header">
+                        <h3>Completa Acquisto</h3>
+                        <button id="close-complete-modal" class="close-btn">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="complete-purchase-info">
+                            <p>Stai per completare <strong id="complete-count">0</strong> acquisti programmati per il
+                                <strong id="complete-date">--/--/----</strong></p>
+                            <p style="margin-top: 10px; color: #ccc;">Inserisci il prezzo totale speso per tutti i
+                                Pokemon:</p>
+                        </div>
+
+                        <div class="form-row">
+                            <label>Prezzo totale (€):</label>
+                            <input type="number" id="complete-total-price" class="form-input" step="0.01" min="0"
+                                placeholder="0.00">
+                        </div>
+
+                        <div class="form-row">
+                            <label>Mese di registrazione:</label>
+                            <input type="month" id="complete-month" class="form-input">
+                        </div>
+
+                        <div class="price-calculation-info">
+                            <small>Prezzo per Pokemon: €<span id="price-per-pokemon">0.00</span></small>
+                        </div>
+
+                        <button id="confirm-complete-purchase" class="save-btn">Conferma Acquisto</button>
                     </div>
                 </div>
             </div>

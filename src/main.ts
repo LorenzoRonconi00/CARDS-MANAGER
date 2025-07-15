@@ -291,6 +291,197 @@ ipcMain.handle('delete-all-purchases', async () => {
     }
 });
 
+// Planned Purchases handlers
+// Add planned purchase
+ipcMain.handle('add-planned-purchase', async (_, plannedData: {
+    pokemonId: number,
+    pokemonName: string,
+    basePrice: number,
+    plannedDate: string
+}) => {
+    try {
+        const db = mongoClient.db(DATABASE_NAME);
+        const collection = db.collection('planned_purchases');
+
+        const plannedPurchase = {
+            pokemonId: plannedData.pokemonId,
+            pokemonName: plannedData.pokemonName,
+            basePrice: plannedData.basePrice,
+            plannedDate: plannedData.plannedDate,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            status: 'pending' // pending, completed, cancelled
+        };
+
+        const result = await collection.insertOne(plannedPurchase);
+        return result.insertedId ? true : false;
+    } catch (error) {
+        console.error('Errore aggiunta acquisto programmato:', error);
+        return false;
+    }
+});
+
+// Get all planned purchases grouped by date
+ipcMain.handle('get-planned-purchases', async () => {
+    try {
+        const db = mongoClient.db(DATABASE_NAME);
+        const collection = db.collection('planned_purchases');
+
+        const plannedPurchases = await collection
+            .find({ status: 'pending' })
+            .sort({ plannedDate: 1 })
+            .toArray();
+
+        // Convert _id to string and group by date
+        const groupedPurchases: { [date: string]: any[] } = {};
+
+        plannedPurchases.forEach(purchase => {
+            const purchaseWithStringId = {
+                ...purchase,
+                _id: purchase._id.toString()
+            };
+
+            const dateKey = purchase.plannedDate;
+            if (!groupedPurchases[dateKey]) {
+                groupedPurchases[dateKey] = [];
+            }
+            groupedPurchases[dateKey].push(purchaseWithStringId);
+        });
+
+        return groupedPurchases;
+    } catch (error) {
+        console.error('Errore recupero acquisti programmati:', error);
+        return {};
+    }
+});
+
+// Cancel planned purchases for a specific date
+ipcMain.handle('cancel-planned-purchases', async (_, plannedDate: string) => {
+    try {
+        const db = mongoClient.db(DATABASE_NAME);
+        const collection = db.collection('planned_purchases');
+
+        const result = await collection.updateMany(
+            { plannedDate: plannedDate, status: 'pending' },
+            {
+                $set: {
+                    status: 'cancelled',
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        return result.modifiedCount > 0;
+    } catch (error) {
+        console.error('Errore cancellazione acquisti programmati:', error);
+        return false;
+    }
+});
+
+// Complete planned purchases for a specific date
+ipcMain.handle('complete-planned-purchases', async (_, data: {
+    plannedDate: string,
+    totalPrice: number,
+    completionMonth: string
+}) => {
+    try {
+        const db = mongoClient.db(DATABASE_NAME);
+        const plannedCollection = db.collection('planned_purchases');
+        const purchasesCollection = db.collection('purchases');
+
+        // Get all pending purchases for this date
+        const pendingPurchases = await plannedCollection
+            .find({ plannedDate: data.plannedDate, status: 'pending' })
+            .toArray();
+
+        if (pendingPurchases.length === 0) {
+            return { success: false, message: 'Nessun acquisto programmato trovato' };
+        }
+
+        // Calculate price per pokemon
+        const pricePerPokemon = data.totalPrice / pendingPurchases.length;
+
+        // Create actual purchases
+        const purchasesToInsert = pendingPurchases.map(planned => ({
+            pokemonId: planned.pokemonId,
+            pokemonName: planned.pokemonName,
+            finalPrice: pricePerPokemon,
+            month: data.completionMonth,
+            date: new Date(),
+            wasPlanned: true,
+            originalPlannedDate: planned.plannedDate
+        }));
+
+        // Insert purchases
+        const insertResult = await purchasesCollection.insertMany(purchasesToInsert);
+
+        if (insertResult.insertedCount > 0) {
+            // Update planned purchases status
+            await plannedCollection.updateMany(
+                { plannedDate: data.plannedDate, status: 'pending' },
+                {
+                    $set: {
+                        status: 'completed',
+                        completionDate: new Date(),
+                        finalPricePerItem: pricePerPokemon,
+                        totalPrice: data.totalPrice,
+                        updatedAt: new Date()
+                    }
+                }
+            );
+
+            return {
+                success: true,
+                message: `Completati ${insertResult.insertedCount} acquisti`,
+                purchasesCreated: insertResult.insertedCount
+            };
+        }
+
+        return { success: false, message: 'Errore durante la creazione degli acquisti' };
+    } catch (error) {
+        console.error('Errore completamento acquisti programmati:', error);
+        return { success: false, message: 'Errore durante il completamento' };
+    }
+});
+
+// Delete a single planned purchase
+ipcMain.handle('delete-planned-purchase', async (_, purchaseId: string) => {
+    try {
+        if (!ObjectId.isValid(purchaseId)) {
+            console.error('ID ObjectId non valido:', purchaseId);
+            return false;
+        }
+
+        const db = mongoClient.db(DATABASE_NAME);
+        const collection = db.collection('planned_purchases');
+
+        const result = await collection.deleteOne({ _id: new ObjectId(purchaseId) });
+
+        return result.deletedCount > 0;
+    } catch (error) {
+        console.error('Errore eliminazione acquisto programmato:', error);
+        return false;
+    }
+});
+
+// Check if a Pokemon is already planned for purchase
+ipcMain.handle('check-pokemon-planned', async (_, pokemonId: number) => {
+    try {
+        const db = mongoClient.db(DATABASE_NAME);
+        const collection = db.collection('planned_purchases');
+
+        const count = await collection.countDocuments({
+            pokemonId: pokemonId,
+            status: 'pending'
+        });
+
+        return count > 0;
+    } catch (error) {
+        console.error('Errore controllo pokemon programmato:', error);
+        return false;
+    }
+});
+
 // Finances
 // Add transaction
 ipcMain.handle('add-transaction', async (_, transactionData: {

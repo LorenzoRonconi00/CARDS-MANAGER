@@ -34,6 +34,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteAllPurchases: () =>
     ipcRenderer.invoke('delete-all-purchases'),
 
+  // Planned Purchases
+  addPlannedPurchase: (plannedData: {
+    pokemonId: number,
+    pokemonName: string,
+    basePrice: number,
+    plannedDate: string
+  }) => ipcRenderer.invoke('add-planned-purchase', plannedData),
+
+  getPlannedPurchases: () =>
+    ipcRenderer.invoke('get-planned-purchases'),
+
+  cancelPlannedPurchases: (plannedDate: string) =>
+    ipcRenderer.invoke('cancel-planned-purchases', plannedDate),
+
+  completePlannedPurchases: (data: {
+    plannedDate: string,
+    totalPrice: number,
+    completionMonth: string
+  }) => ipcRenderer.invoke('complete-planned-purchases', data),
+
+  deletePlannedPurchase: (purchaseId: string) =>
+    ipcRenderer.invoke('delete-planned-purchase', purchaseId),
+
+  checkPokemonPlanned: (pokemonId: number) =>
+    ipcRenderer.invoke('check-pokemon-planned', pokemonId),
+
   // Finances
   addTransaction: (transactionData: {
     type: 'income' | 'expense',
@@ -108,6 +134,42 @@ declare global {
       getPurchases: (sortBy?: string) => Promise<any[]>;
       deletePurchase: (purchaseId: string) => Promise<boolean>;
       deleteAllPurchases: () => Promise<boolean>;
+      // Planned Purchases
+      addPlannedPurchase: (plannedData: {
+        pokemonId: number,
+        pokemonName: string,
+        basePrice: number,
+        plannedDate: string
+      }) => Promise<boolean>;
+
+      getPlannedPurchases: () => Promise<{
+        [date: string]: Array<{
+          _id: string,
+          pokemonId: number,
+          pokemonName: string,
+          basePrice: number,
+          plannedDate: string,
+          createdAt: Date,
+          updatedAt: Date,
+          status: string
+        }>
+      }>;
+
+      cancelPlannedPurchases: (plannedDate: string) => Promise<boolean>;
+
+      completePlannedPurchases: (data: {
+        plannedDate: string,
+        totalPrice: number,
+        completionMonth: string
+      }) => Promise<{
+        success: boolean,
+        message: string,
+        purchasesCreated?: number
+      }>;
+
+      deletePlannedPurchase: (purchaseId: string) => Promise<boolean>;
+
+      checkPokemonPlanned: (pokemonId: number) => Promise<boolean>;
       // Finances
       addTransaction: (transactionData: {
         type: 'income' | 'expense',

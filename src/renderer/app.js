@@ -3,6 +3,11 @@ let currentGeneration = null;
 let generationCounts = {};
 let selectedPokemonForPurchase = null;
 
+// Planned Purchases
+let selectedPokemonForPlanned = null;
+let plannedPurchases = {};
+let currentPlannedDateForCompletion = null;
+
 // DOM Elements
 const navButtons = document.querySelectorAll('.nav-btn');
 const pages = document.querySelectorAll('.page');
@@ -852,6 +857,8 @@ function setupMarket() {
     const currentDate = new Date();
     const currentMonth = currentDate.getFullYear() + '-' + (currentDate.getMonth() + 1).toString().padStart(2, '0');
     document.getElementById('purchase-month').value = currentMonth;
+
+    setupPlannedPurchases();
 }
 
 // Switch Tabs
@@ -876,6 +883,8 @@ function switchTab(tabName) {
         loadPurchases();
     } else if (tabName === 'budget') {
         loadBudgetData();
+    } else if (tabName === 'planned') {
+        loadPlannedPurchases();
     }
 }
 
@@ -935,19 +944,29 @@ async function displayModalSearchResults(results) {
     }
 
     try {
-        // Ottieni tutti gli acquisti per controllare quali Pokémon sono già stati acquistati
-        const purchases = window.electronAPI ? await window.electronAPI.getPurchases() : [];
+        // Ottieni tutti gli acquisti e controlla quali Pokemon sono già programmati
+        const [purchases, isPlanned] = await Promise.all([
+            window.electronAPI ? await window.electronAPI.getPurchases() : [],
+            Promise.all(results.map(p => window.electronAPI ? window.electronAPI.checkPokemonPlanned(p.id) : false))
+        ]);
+
         const purchasedPokemonIds = new Set(purchases.map(p => p.pokemonId));
 
-        const resultsHtml = results.map(pokemon => {
+        const resultsHtml = results.map((pokemon, index) => {
             const isAlreadyPurchased = purchasedPokemonIds.has(pokemon.id);
-            const clickHandler = isAlreadyPurchased ? '' : `onclick="selectPokemonForPurchase(${pokemon.id}, '${pokemon.name}', ${pokemon.price || 0})"`;
-            const itemClass = isAlreadyPurchased ? 'search-result-item purchased-item' : 'search-result-item';
-            const statusText = isAlreadyPurchased ? ' - ✅ GIÀ ACQUISTATO' : '';
+            const isAlreadyPlanned = isPlanned[index];
+            const isDisabled = isAlreadyPurchased || isAlreadyPlanned;
+
+            const clickHandler = isDisabled ? '' : `onclick="selectPokemonForPurchase(${pokemon.id}, '${pokemon.name}', ${pokemon.price || 0})"`;
+            const itemClass = isAlreadyPurchased ? 'search-result-item purchased-item' :
+                isAlreadyPlanned ? 'search-result-item planned-item' :
+                    'search-result-item';
+            const statusText = isAlreadyPurchased ? ' - ✅ GIÀ ACQUISTATO' :
+                isAlreadyPlanned ? ' - 📅 GIÀ PROGRAMMATO' : '';
 
             return `
                 <div class="${itemClass}" ${clickHandler}>
-                    <div class="search-result-img ${isAlreadyPurchased ? 'purchased-img' : ''}">
+                    <div class="search-result-img ${isDisabled ? 'purchased-img' : ''}">
                         <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png" 
                              alt="${pokemon.name}"
                              onerror="this.parentNode.innerHTML='❓'">
@@ -955,7 +974,7 @@ async function displayModalSearchResults(results) {
                     <div class="search-result-info">
                         <strong>${pokemon.name}</strong> - #${pokemon.id.toString().padStart(3, '0')}
                         ${pokemon.price ? ` - €${pokemon.price}` : ' - Nessun prezzo'}
-                        <span class="purchase-status">${statusText}</span>
+                        <span class="${isAlreadyPurchased ? 'purchase-status' : 'planned-status'}">${statusText}</span>
                     </div>
                 </div>
             `;
@@ -964,7 +983,7 @@ async function displayModalSearchResults(results) {
         modalSearchResults.innerHTML = resultsHtml;
     } catch (error) {
         console.error('Errore nel controllare acquisti esistenti:', error);
-        // Fallback: mostra i risultati normalmente senza controllo acquisti
+        // Fallback: mostra i risultati normalmente senza controllo acquisti/programmati
         const resultsHtml = results.map(pokemon => `
             <div class="search-result-item" onclick="selectPokemonForPurchase(${pokemon.id}, '${pokemon.name}', ${pokemon.price || 0})">
                 <div class="search-result-img">
@@ -1143,6 +1162,464 @@ async function deleteAllPurchases() {
     } catch (error) {
         console.error('Errore eliminazione tutti acquisti:', error);
         alert('Errore durante l\'eliminazione di tutti gli acquisti');
+    }
+}
+
+// ===========================
+// PLANNED PURCHASES
+// ===========================
+
+function setupPlannedPurchases() {
+    // Planned purchases button and modal
+    const addPlannedBtn = document.getElementById('add-planned-btn');
+    const plannedModal = document.getElementById('planned-modal');
+    const closePlannedModalBtn = document.getElementById('close-planned-modal');
+    const plannedSearchBtn = document.getElementById('planned-search-btn');
+    const plannedSearchInput = document.getElementById('planned-search-input');
+    const savePlannedBtn = document.getElementById('save-planned');
+
+    // Complete purchase modal
+    const completePurchaseModal = document.getElementById('complete-purchase-modal');
+    const closeCompleteModalBtn = document.getElementById('close-complete-modal');
+    const confirmCompleteBtn = document.getElementById('confirm-complete-purchase');
+    const completeTotalPriceInput = document.getElementById('complete-total-price');
+
+    if (addPlannedBtn) {
+        addPlannedBtn.addEventListener('click', openPlannedModal);
+    }
+
+    if (closePlannedModalBtn) {
+        closePlannedModalBtn.addEventListener('click', closePlannedModal);
+    }
+
+    if (plannedModal) {
+        plannedModal.addEventListener('click', (e) => {
+            if (e.target === plannedModal) {
+                closePlannedModal();
+            }
+        });
+    }
+
+    if (plannedSearchBtn) {
+        plannedSearchBtn.addEventListener('click', performPlannedSearch);
+    }
+
+    if (plannedSearchInput) {
+        plannedSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performPlannedSearch();
+            }
+        });
+    }
+
+    if (savePlannedBtn) {
+        savePlannedBtn.addEventListener('click', savePlannedPurchase);
+    }
+
+    if (closeCompleteModalBtn) {
+        closeCompleteModalBtn.addEventListener('click', closeCompletePurchaseModal);
+    }
+
+    if (completePurchaseModal) {
+        completePurchaseModal.addEventListener('click', (e) => {
+            if (e.target === completePurchaseModal) {
+                closeCompletePurchaseModal();
+            }
+        });
+    }
+
+    if (completeTotalPriceInput) {
+        completeTotalPriceInput.addEventListener('input', updatePricePerPokemon);
+    }
+
+    if (confirmCompleteBtn) {
+        confirmCompleteBtn.addEventListener('click', confirmCompletePurchase);
+    }
+
+    // Set default date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const plannedDateInput = document.getElementById('planned-date');
+    if (plannedDateInput) {
+        plannedDateInput.value = tomorrow.toISOString().split('T')[0];
+        plannedDateInput.min = tomorrow.toISOString().split('T')[0];
+    }
+
+    // Set default month for completion
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    const completeMonthInput = document.getElementById('complete-month');
+    if (completeMonthInput) {
+        completeMonthInput.value = currentMonth;
+    }
+}
+
+function openPlannedModal() {
+    const plannedModal = document.getElementById('planned-modal');
+    plannedModal.classList.remove('hidden');
+    resetPlannedModal();
+    document.getElementById('planned-search-input').focus();
+}
+
+function closePlannedModal() {
+    const plannedModal = document.getElementById('planned-modal');
+    plannedModal.classList.add('hidden');
+}
+
+function resetPlannedModal() {
+    document.getElementById('planned-search-input').value = '';
+    document.getElementById('planned-search-results').innerHTML = '';
+    document.getElementById('selected-planned-pokemon').classList.add('hidden');
+    selectedPokemonForPlanned = null;
+
+    // Reset placeholder
+    document.getElementById('planned-pokemon-placeholder').style.display = 'flex';
+    document.getElementById('planned-pokemon-img').style.display = 'none';
+
+    // Reset date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('planned-date').value = tomorrow.toISOString().split('T')[0];
+}
+
+async function performPlannedSearch() {
+    const query = document.getElementById('planned-search-input').value.trim();
+
+    if (!query) {
+        return;
+    }
+
+    try {
+        if (window.electronAPI) {
+            const results = await window.electronAPI.searchPokemon(query);
+            displayPlannedSearchResults(results);
+        }
+    } catch (error) {
+        console.error('Errore ricerca planned modal:', error);
+        document.getElementById('planned-search-results').innerHTML =
+            '<p style="color: #dc3545; padding: 10px;">Errore durante la ricerca</p>';
+    }
+}
+
+async function displayPlannedSearchResults(results) {
+    const searchResultsDiv = document.getElementById('planned-search-results');
+
+    if (!results || results.length === 0) {
+        searchResultsDiv.innerHTML = '<p style="color: #ccc; padding: 10px;">Nessun Pokemon trovato</p>';
+        return;
+    }
+
+    try {
+        // Check which Pokemon are already purchased or planned
+        const [purchases, isPlanned] = await Promise.all([
+            window.electronAPI ? window.electronAPI.getPurchases() : [],
+            Promise.all(results.map(p => window.electronAPI ? window.electronAPI.checkPokemonPlanned(p.id) : false))
+        ]);
+
+        const purchasedPokemonIds = new Set(purchases.map(p => p.pokemonId));
+
+        const resultsHtml = results.map((pokemon, index) => {
+            const isAlreadyPurchased = purchasedPokemonIds.has(pokemon.id);
+            const isAlreadyPlanned = isPlanned[index];
+            const isDisabled = isAlreadyPurchased || isAlreadyPlanned;
+
+            const clickHandler = isDisabled ? '' : `onclick="selectPokemonForPlanned(${pokemon.id}, '${pokemon.name}', ${pokemon.price || 0})"`;
+            const itemClass = isAlreadyPurchased ? 'search-result-item purchased-item' :
+                isAlreadyPlanned ? 'search-result-item planned-item' :
+                    'search-result-item';
+            const statusText = isAlreadyPurchased ? ' - ✅ GIÀ ACQUISTATO' :
+                isAlreadyPlanned ? ' - 📅 GIÀ PROGRAMMATO' : '';
+
+            return `
+                <div class="${itemClass}" ${clickHandler}>
+                    <div class="search-result-img ${isDisabled ? 'purchased-img' : ''}">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png" 
+                             alt="${pokemon.name}"
+                             onerror="this.parentNode.innerHTML='❓'">
+                    </div>
+                    <div class="search-result-info">
+                        <strong>${pokemon.name}</strong> - #${pokemon.id.toString().padStart(3, '0')}
+                        ${pokemon.price ? ` - €${pokemon.price}` : ' - Nessun prezzo'}
+                        <span class="${isAlreadyPurchased ? 'purchase-status' : 'planned-status'}">${statusText}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        searchResultsDiv.innerHTML = resultsHtml;
+    } catch (error) {
+        console.error('Errore nel controllare acquisti esistenti:', error);
+        // Fallback without checks
+        const resultsHtml = results.map(pokemon => `
+            <div class="search-result-item" onclick="selectPokemonForPlanned(${pokemon.id}, '${pokemon.name}', ${pokemon.price || 0})">
+                <div class="search-result-img">
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png" 
+                         alt="${pokemon.name}"
+                         onerror="this.parentNode.innerHTML='❓'">
+                </div>
+                <div class="search-result-info">
+                    <strong>${pokemon.name}</strong> - #${pokemon.id.toString().padStart(3, '0')}
+                    ${pokemon.price ? ` - €${pokemon.price}` : ' - Nessun prezzo'}
+                </div>
+            </div>
+        `).join('');
+
+        searchResultsDiv.innerHTML = resultsHtml;
+    }
+}
+
+function selectPokemonForPlanned(pokemonId, pokemonName, basePrice) {
+    selectedPokemonForPlanned = { id: pokemonId, name: pokemonName, price: basePrice };
+
+    // Hide placeholder and show image
+    document.getElementById('planned-pokemon-placeholder').style.display = 'none';
+    document.getElementById('planned-pokemon-img').style.display = 'block';
+
+    // Update UI
+    document.getElementById('planned-pokemon-img').src =
+        `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
+    document.getElementById('planned-pokemon-name').textContent = pokemonName;
+    document.getElementById('planned-pokemon-id').textContent = `#${pokemonId.toString().padStart(3, '0')}`;
+    document.getElementById('planned-base-price').textContent = `€${basePrice.toFixed(2)}`;
+
+    document.getElementById('selected-planned-pokemon').classList.remove('hidden');
+    document.getElementById('planned-search-results').innerHTML = '';
+    document.getElementById('planned-search-input').value = '';
+}
+
+async function savePlannedPurchase() {
+    if (!selectedPokemonForPlanned) {
+        return;
+    }
+
+    const plannedDate = document.getElementById('planned-date').value;
+
+    if (!plannedDate) {
+        alert('Seleziona una data per l\'acquisto programmato');
+        return;
+    }
+
+    try {
+        if (window.electronAPI) {
+            const success = await window.electronAPI.addPlannedPurchase({
+                pokemonId: selectedPokemonForPlanned.id,
+                pokemonName: selectedPokemonForPlanned.name,
+                basePrice: selectedPokemonForPlanned.price,
+                plannedDate: plannedDate
+            });
+
+            if (success) {
+                closePlannedModal();
+                loadPlannedPurchases();
+            } else {
+                alert('Errore durante il salvataggio dell\'acquisto programmato');
+            }
+        }
+    } catch (error) {
+        console.error('Errore salvataggio acquisto programmato:', error);
+        alert('Errore durante il salvataggio dell\'acquisto programmato');
+    }
+}
+
+async function loadPlannedPurchases() {
+    try {
+        if (window.electronAPI) {
+            plannedPurchases = await window.electronAPI.getPlannedPurchases();
+            displayPlannedPurchases();
+        }
+    } catch (error) {
+        console.error('Errore caricamento acquisti programmati:', error);
+        document.getElementById('planned-groups-container').innerHTML =
+            '<p style="color: #dc3545; padding: 20px;">Errore durante il caricamento degli acquisti programmati</p>';
+    }
+}
+
+function displayPlannedPurchases() {
+    const container = document.getElementById('planned-groups-container');
+    const dates = Object.keys(plannedPurchases).sort();
+
+    if (dates.length === 0) {
+        container.innerHTML = `
+            <div class="empty-planned">
+                <h3>Nessun acquisto programmato</h3>
+                <p>Clicca il pulsante in alto per programmare i tuoi prossimi acquisti</p>
+            </div>
+        `;
+        return;
+    }
+
+    const groupsHtml = dates.map(date => {
+        const items = plannedPurchases[date];
+        const totalBasePrice = items.reduce((sum, item) => sum + item.basePrice, 0);
+        const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('it-IT', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        return `
+            <div class="planned-group">
+                <div class="planned-group-header">
+                    <div class="planned-date-info">
+                        <span class="planned-date-label">${formattedDate}</span>
+                        <span class="planned-count">${items.length} Pokemon</span>
+                        <span class="planned-total-price">Stima: €${totalBasePrice.toFixed(2)}</span>
+                    </div>
+                    <div class="planned-group-actions">
+                        <button class="complete-group-btn" onclick="openCompletePurchaseModal('${date}')">
+                            ✅ Completa
+                        </button>
+                        <button class="cancel-group-btn" onclick="cancelPlannedGroup('${date}')">
+                            ❌ Annulla
+                        </button>
+                    </div>
+                </div>
+                <div class="planned-items-list">
+                    ${items.map(item => `
+                        <div class="planned-item">
+                            <div class="planned-pokemon-img">
+                                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${item.pokemonId}.png" 
+                                     alt="${item.pokemonName}"
+                                     onerror="this.parentNode.innerHTML='❓'">
+                            </div>
+                            <div class="planned-pokemon-name">${item.pokemonName}</div>
+                            <div class="planned-base-price">€${item.basePrice.toFixed(2)}</div>
+                            <button class="planned-delete-btn" onclick="deletePlannedPurchase('${item._id}')">🗑️</button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = groupsHtml;
+}
+
+function openCompletePurchaseModal(plannedDate) {
+    currentPlannedDateForCompletion = plannedDate;
+    const items = plannedPurchases[plannedDate];
+
+    if (!items || items.length === 0) return;
+
+    const formattedDate = new Date(plannedDate + 'T00:00:00').toLocaleDateString('it-IT');
+
+    document.getElementById('complete-count').textContent = items.length;
+    document.getElementById('complete-date').textContent = formattedDate;
+    document.getElementById('complete-total-price').value = '';
+    document.getElementById('price-per-pokemon').textContent = '0.00';
+
+    // Set current month as default
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    document.getElementById('complete-month').value = currentMonth;
+
+    const modal = document.getElementById('complete-purchase-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('complete-total-price').focus();
+}
+
+function closeCompletePurchaseModal() {
+    const modal = document.getElementById('complete-purchase-modal');
+    modal.classList.add('hidden');
+    currentPlannedDateForCompletion = null;
+}
+
+function updatePricePerPokemon() {
+    const totalPrice = parseFloat(document.getElementById('complete-total-price').value) || 0;
+    const items = plannedPurchases[currentPlannedDateForCompletion] || [];
+    const pricePerPokemon = items.length > 0 ? totalPrice / items.length : 0;
+
+    document.getElementById('price-per-pokemon').textContent = pricePerPokemon.toFixed(2);
+}
+
+async function confirmCompletePurchase() {
+    if (!currentPlannedDateForCompletion) return;
+
+    const totalPrice = parseFloat(document.getElementById('complete-total-price').value);
+    const completionMonth = document.getElementById('complete-month').value;
+
+    if (isNaN(totalPrice) || totalPrice <= 0) {
+        alert('Inserisci un prezzo totale valido');
+        return;
+    }
+
+    if (!completionMonth) {
+        alert('Seleziona il mese di registrazione');
+        return;
+    }
+
+    try {
+        if (window.electronAPI) {
+            const result = await window.electronAPI.completePlannedPurchases({
+                plannedDate: currentPlannedDateForCompletion,
+                totalPrice: totalPrice,
+                completionMonth: completionMonth
+            });
+
+            if (result.success) {
+                console.log(result.message);
+                closeCompletePurchaseModal();
+                loadPlannedPurchases();
+
+                // Ricarica gli acquisti se siamo nella tab acquisti
+                const activeTab = document.querySelector('.tab-btn.active');
+                if (activeTab && activeTab.getAttribute('data-tab') === 'purchases') {
+                    loadPurchases();
+                }
+
+                // Mostra messaggio di successo
+                alert(`✅ ${result.message}\nOgni Pokemon è stato registrato a €${(totalPrice / result.purchasesCreated).toFixed(2)}`);
+            } else {
+                alert('Errore: ' + result.message);
+            }
+        }
+    } catch (error) {
+        console.error('Errore completamento acquisti programmati:', error);
+        alert('Errore durante il completamento degli acquisti');
+    }
+}
+
+async function cancelPlannedGroup(plannedDate) {
+    const items = plannedPurchases[plannedDate];
+    if (!items || items.length === 0) return;
+
+    const formattedDate = new Date(plannedDate + 'T00:00:00').toLocaleDateString('it-IT');
+
+    if (!confirm(`Sei sicuro di voler annullare tutti i ${items.length} acquisti programmati per il ${formattedDate}?`)) {
+        return;
+    }
+
+    try {
+        if (window.electronAPI) {
+            const success = await window.electronAPI.cancelPlannedPurchases(plannedDate);
+
+            if (success) {
+                console.log('Gruppo di acquisti annullato');
+                loadPlannedPurchases();
+            } else {
+                alert('Errore durante l\'annullamento degli acquisti');
+            }
+        }
+    } catch (error) {
+        console.error('Errore annullamento acquisti programmati:', error);
+        alert('Errore durante l\'annullamento degli acquisti');
+    }
+}
+
+async function deletePlannedPurchase(purchaseId) {
+    try {
+        if (window.electronAPI) {
+            const success = await window.electronAPI.deletePlannedPurchase(purchaseId);
+
+            if (success) {
+                console.log('Acquisto programmato eliminato');
+                loadPlannedPurchases();
+            } else {
+                alert('Errore durante l\'eliminazione dell\'acquisto');
+            }
+        }
+    } catch (error) {
+        console.error('Errore eliminazione acquisto programmato:', error);
+        alert('Errore durante l\'eliminazione dell\'acquisto');
     }
 }
 
@@ -2529,6 +3006,10 @@ window.deleteTransaction = deleteTransaction;
 window.openTransactionModal = openTransactionModal;
 window.closeTransactionModal = closeTransactionModal;
 window.openPokemonUrl = openPokemonUrl;
+window.selectPokemonForPlanned = selectPokemonForPlanned;
+window.openCompletePurchaseModal = openCompletePurchaseModal;
+window.cancelPlannedGroup = cancelPlannedGroup;
+window.deletePlannedPurchase = deletePlannedPurchase;
 
 // Error Handling
 window.addEventListener('error', (event) => {

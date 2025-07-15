@@ -569,6 +569,7 @@ body {
     width: 100%;
     height: 100%;
     object-fit: contain;
+    background-color: transparent;
 }
 
 .purchase-delete-btn {
@@ -1089,6 +1090,312 @@ body {
 
 .history-table tr:hover {
     background: rgba(255, 255, 255, 0.05);
+}
+
+/* Planned Purchases Styles */
+.planned-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.add-planned-btn {
+    background: #6f42c1;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.add-planned-btn:hover {
+    background: #5a32a3;
+}
+
+.planned-info {
+    color: #ccc;
+    font-size: 0.9rem;
+    background-color: transparent;
+}
+
+/* Planned Groups Container */
+.planned-groups-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Planned Group Card */
+.planned-group {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.planned-group-header {
+    background: rgba(111, 66, 193, 0.2);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.planned-date-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background-color: transparent;
+}
+
+.planned-date-label {
+    color: white;
+    font-weight: bold;
+    font-size: 1.1rem;
+    background-color: transparent;
+}
+
+.planned-count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    color: white;
+}
+
+.planned-total-price {
+    color: #c3a7f7;
+    font-weight: bold;
+    font-size: 1rem;
+    background-color: transparent;
+}
+
+.planned-group-actions {
+    display: flex;
+    gap: 10px;
+    background-color: transparent;
+}
+
+.complete-group-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.complete-group-btn:hover {
+    background: #218838;
+}
+
+.cancel-group-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.cancel-group-btn:hover {
+    background: #c82333;
+}
+
+/* Planned Items List */
+.planned-items-list {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.planned-item {
+    display: grid;
+    grid-template-columns: 60px 1fr 100px 80px;
+    gap: 15px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    align-items: center;
+}
+
+.planned-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.planned-pokemon-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgb(255, 255, 255);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.planned-pokemon-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background-color: transparent;
+}
+
+.planned-pokemon-name {
+    color: white;
+    font-weight: 500;
+    text-transform: capitalize;
+    background-color: transparent;
+}
+
+.planned-base-price {
+    color: #ccc;
+    text-align: right;
+    background-color: transparent;
+}
+
+.planned-delete-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.planned-delete-btn:hover {
+    background: #c82333;
+}
+
+/* Empty planned state */
+.empty-planned {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-planned h3 {
+    color: #999;
+    margin-bottom: 10px;
+}
+
+/* Planned in search results */
+.search-result-item.planned-item {
+    opacity: 0.6;
+    cursor: not-allowed !important;
+    background: rgba(111, 66, 193, 0.1) !important;
+}
+
+.search-result-item.planned-item:hover {
+    background: rgba(111, 66, 193, 0.15) !important;
+}
+
+.planned-status {
+    color: #6f42c1;
+    font-weight: bold;
+    font-size: 0.8rem;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Date section in modal */
+.date-section {
+    margin-bottom: 15px;
+}
+
+.date-section label {
+    color: white;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.date-section input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--primary-color);
+    border-radius: 6px;
+    background: transparent;
+    color: white;
+}
+
+/* Complete Purchase Modal */
+.modal-small {
+    max-width: 500px;
+}
+
+.complete-purchase-info {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.complete-purchase-info p {
+    margin: 0;
+    color: white;
+    background-color: transparent;
+}
+
+.complete-purchase-info p strong {
+    background-color: transparent;
+}
+
+.complete-purchase-info strong {
+    color: var(--primary-color);
+}
+
+.price-calculation-info {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(111, 66, 193, 0.1);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.price-calculation-info small {
+    color: white;
+    font-size: 0.9rem;
+}
+
+#price-per-pokemon {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .planned-controls {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .planned-group-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .planned-item {
+        grid-template-columns: 50px 1fr;
+        gap: 10px;
+    }
+
+    .planned-base-price,
+    .planned-delete-btn {
+        grid-column: 2;
+        justify-self: end;
+    }
 }
 
 /* URL indicator icon */
