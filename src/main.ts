@@ -20,6 +20,11 @@ function createWindow() {
     });
 
     mainWindow.loadFile(path.join(__dirname, '../src/renderer/index.html'));
+
+    // Check scheduled transactions after window is created
+    mainWindow.webContents.once('did-finish-load', () => {
+        checkScheduledTransactions();
+    });
 }
 
 // Connessione MongoDB
@@ -647,6 +652,156 @@ ipcMain.handle('get-spending-insights', async () => {
     }
 });
 
+// Scheduled Transactions handlers
+// Add scheduled transaction
+ipcMain.handle('add-scheduled-transaction', async (_, scheduledData: {
+    type: 'income' | 'expense',
+    category: string,
+    description: string,
+    amount: number,
+    dayOfMonth: number
+}) => {
+    try {
+        const db = mongoClient.db(DATABASE_NAME);
+        const collection = db.collection('scheduled_transactions');
+
+        const scheduledTransaction = {
+            type: scheduledData.type,
+            category: scheduledData.category,
+            description: scheduledData.description,
+            amount: scheduledData.amount,
+            dayOfMonth: scheduledData.dayOfMonth,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastExecuted: null
+        };
+
+        const result = await collection.insertOne(scheduledTransaction);
+        return result.insertedId ? true : false;
+    } catch (error) {
+        console.error('Errore aggiunta transazione programmata:', error);
+        return false;
+    }
+});
+
+// Get all scheduled transactions
+ipcMain.handle('get-scheduled-transactions', async () => {
+    try {
+        const db = mongoClient.db(DATABASE_NAME);
+        const collection = db.collection('scheduled_transactions');
+
+        const scheduledTransactions = await collection.find({ isActive: true }).toArray();
+
+        // Convert _id to string
+        const transactionsWithStringId = scheduledTransactions.map(transaction => ({
+            ...transaction,
+            _id: transaction._id.toString()
+        }));
+
+        return transactionsWithStringId;
+    } catch (error) {
+        console.error('Errore recupero transazioni programmate:', error);
+        return [];
+    }
+});
+
+// Delete scheduled transaction
+ipcMain.handle('delete-scheduled-transaction', async (_, transactionId: string) => {
+    try {
+        if (!ObjectId.isValid(transactionId)) {
+            console.error('ID ObjectId non valido:', transactionId);
+            return false;
+        }
+
+        const db = mongoClient.db(DATABASE_NAME);
+        const collection = db.collection('scheduled_transactions');
+
+        // Instead of deleting, we mark it as inactive
+        const result = await collection.updateOne(
+            { _id: new ObjectId(transactionId) },
+            { $set: { isActive: false, updatedAt: new Date() } }
+        );
+
+        return result.modifiedCount > 0;
+    } catch (error) {
+        console.error('Errore eliminazione transazione programmata:', error);
+        return false;
+    }
+});
+
+// Process scheduled transactions for today
+ipcMain.handle('process-scheduled-transactions', async () => {
+    try {
+        const db = mongoClient.db(DATABASE_NAME);
+        const scheduledCollection = db.collection('scheduled_transactions');
+        const transactionsCollection = db.collection('transactions');
+
+        const today = new Date();
+        const currentDay = today.getDate();
+        const currentMonth = today.toISOString().substring(0, 7);
+
+        // Get all active scheduled transactions for today
+        const scheduledTransactions = await scheduledCollection.find({
+            isActive: true,
+            dayOfMonth: currentDay
+        }).toArray();
+
+        let processedCount = 0;
+
+        for (const scheduled of scheduledTransactions) {
+            // Check if we already executed this scheduled transaction this month
+            const lastExecutedMonth = scheduled.lastExecuted
+                ? new Date(scheduled.lastExecuted).toISOString().substring(0, 7)
+                : null;
+
+            if (lastExecutedMonth === currentMonth) {
+                console.log(`Transazione programmata già eseguita questo mese: ${scheduled.description}`);
+                continue;
+            }
+
+            // Create the actual transaction
+            const transaction = {
+                type: scheduled.type,
+                category: scheduled.category,
+                description: scheduled.description,
+                amount: scheduled.amount,
+                date: today,
+                month: currentMonth,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                isScheduled: true,
+                scheduledTransactionId: scheduled._id
+            };
+
+            const result = await transactionsCollection.insertOne(transaction);
+
+            if (result.insertedId) {
+                // Update the scheduled transaction with last executed date
+                await scheduledCollection.updateOne(
+                    { _id: scheduled._id },
+                    { $set: { lastExecuted: today } }
+                );
+                processedCount++;
+                console.log(`Eseguita transazione programmata: ${scheduled.description}`);
+            }
+        }
+
+        return {
+            success: true,
+            processedCount,
+            message: `Elaborate ${processedCount} transazioni programmate`
+        };
+    } catch (error) {
+        console.error('Errore elaborazione transazioni programmate:', error);
+        return {
+            success: false,
+            processedCount: 0,
+            message: 'Errore durante l\'elaborazione'
+        };
+    }
+});
+
 // Helper functions
 function calculateMonthStats(transactions: any[]) {
     const income = transactions
@@ -736,6 +891,73 @@ function getCategoryName(category: string): string {
         risparmi: 'Risparmi'
     };
     return names[category as keyof typeof names] || category;
+}
+
+// Function to check and process scheduled transactions on app start
+async function checkScheduledTransactions() {
+    try {
+        const result = await processScheduledTransactions();
+        console.log('Check transazioni programmate:', result.message);
+    } catch (error) {
+        console.error('Errore check transazioni programmate:', error);
+    }
+}
+
+// Helper function for processing scheduled transactions (used by IPC handler)
+async function processScheduledTransactions() {
+    const db = mongoClient.db(DATABASE_NAME);
+    const scheduledCollection = db.collection('scheduled_transactions');
+    const transactionsCollection = db.collection('transactions');
+
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonth = today.toISOString().substring(0, 7);
+
+    const scheduledTransactions = await scheduledCollection.find({
+        isActive: true,
+        dayOfMonth: currentDay
+    }).toArray();
+
+    let processedCount = 0;
+
+    for (const scheduled of scheduledTransactions) {
+        const lastExecutedMonth = scheduled.lastExecuted
+            ? new Date(scheduled.lastExecuted).toISOString().substring(0, 7)
+            : null;
+
+        if (lastExecutedMonth === currentMonth) {
+            continue;
+        }
+
+        const transaction = {
+            type: scheduled.type,
+            category: scheduled.category,
+            description: scheduled.description,
+            amount: scheduled.amount,
+            date: today,
+            month: currentMonth,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isScheduled: true,
+            scheduledTransactionId: scheduled._id
+        };
+
+        const result = await transactionsCollection.insertOne(transaction);
+
+        if (result.insertedId) {
+            await scheduledCollection.updateOne(
+                { _id: scheduled._id },
+                { $set: { lastExecuted: today } }
+            );
+            processedCount++;
+        }
+    }
+
+    return {
+        success: true,
+        processedCount,
+        message: `Elaborate ${processedCount} transazioni programmate`
+    };
 }
 
 app.whenReady().then(async () => {

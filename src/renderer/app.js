@@ -53,6 +53,14 @@ let currentBudgetSettings = {
 };
 let currentFinancialStats = null;
 
+// Scheduled Transactions
+let scheduledTransactions = [];
+const scheduledModal = document.getElementById('scheduled-modal');
+const addScheduledBtn = document.getElementById('add-scheduled-btn');
+const closeScheduledModalBtn = document.getElementById('close-scheduled-modal');
+const saveScheduledBtn = document.getElementById('save-scheduled');
+const scheduledTypeSelect = document.getElementById('scheduled-type');
+
 let spendingInsights = null;
 
 // Budget
@@ -1520,8 +1528,30 @@ function showFinancePage() {
     document.querySelector('.nav').style.display = 'none';
     document.querySelector('.header').style.display = 'none';
 
+    // Processa transazioni programmate all'apertura della pagina finanze
+    processScheduledTransactionsOnStartup();
+
     // Load default tab (transactions)
     switchFinanceTab('transactions');
+}
+
+// Aggiungi questa nuova funzione
+async function processScheduledTransactionsOnStartup() {
+    try {
+        if (window.electronAPI) {
+            const result = await window.electronAPI.processScheduledTransactions();
+            if (result.processedCount > 0) {
+                console.log(`✅ Processate ${result.processedCount} transazioni programmate`);
+                // Ricarica le transazioni se siamo nella tab giusta
+                const activeTab = document.querySelector('.finance-tab-btn.active');
+                if (activeTab && activeTab.getAttribute('data-tab') === 'transactions') {
+                    await loadTransactions();
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Errore processamento transazioni programmate:', error);
+    }
 }
 
 async function initializeFinanceData() {
@@ -1586,7 +1616,9 @@ function switchFinanceTab(tabName) {
     if (tabName === 'transactions') {
         targetTabId = 'transactions-tab';
     } else if (tabName === 'budget') {
-        targetTabId = 'finance-budget-tab'; // NUOVO ID
+        targetTabId = 'finance-budget-tab';
+    } else if (tabName === 'scheduled') {
+        targetTabId = 'scheduled-tab';
     }
 
     const targetTab = document.getElementById(targetTabId);
@@ -1604,13 +1636,12 @@ function switchFinanceTab(tabName) {
     } else if (tabName === 'budget') {
         console.log('📋 Loading finance budget tab...');
         setTimeout(async () => {
-            // Reset dello stato
             spendingInsights = null;
             historicalData = {};
-
-            // Ricarica tutto
             await loadBudgetOverview();
         }, 150);
+    } else if (tabName === 'scheduled') {
+        loadScheduledTransactions();
     }
 }
 
@@ -1760,6 +1791,7 @@ async function saveTransaction() {
 function setupFinance() {
     setupFinanceNavigation();
     setupTransactionFilters();
+    setupScheduledTransactions();
     loadBudgetSettings();
 
     const currentDate = new Date().toISOString().split('T')[0];
@@ -1912,6 +1944,36 @@ function setupTransactionFilters() {
 
     if (sortTransactions) {
         sortTransactions.addEventListener('change', loadTransactions);
+    }
+}
+
+// Setup Scheduled Transactions
+function setupScheduledTransactions() {
+    // Modal events
+    if (addScheduledBtn) {
+        addScheduledBtn.addEventListener('click', openScheduledModal);
+    }
+
+    if (closeScheduledModalBtn) {
+        closeScheduledModalBtn.addEventListener('click', closeScheduledModal);
+    }
+
+    if (scheduledModal) {
+        scheduledModal.addEventListener('click', (e) => {
+            if (e.target === scheduledModal) {
+                closeScheduledModal();
+            }
+        });
+    }
+
+    // Type change event
+    if (scheduledTypeSelect) {
+        scheduledTypeSelect.addEventListener('change', updateScheduledCategoryOptions);
+    }
+
+    // Save button
+    if (saveScheduledBtn) {
+        saveScheduledBtn.addEventListener('click', saveScheduledTransaction);
     }
 }
 
@@ -2220,6 +2282,207 @@ function updateCategoryAnalysisCard(category, currentMonth, trends, targetPercen
         statusElement.textContent = statusText;
     }
 }
+
+// ===========================
+// SCHEDULED TRANSACTIONS
+// ===========================
+
+function openScheduledModal() {
+    scheduledModal.classList.remove('hidden');
+    resetScheduledModal();
+    document.getElementById('scheduled-description').focus();
+}
+
+function closeScheduledModal() {
+    scheduledModal.classList.add('hidden');
+}
+
+function resetScheduledModal() {
+    document.getElementById('scheduled-type').value = 'expense';
+    document.getElementById('scheduled-category').value = 'fisse';
+    document.getElementById('scheduled-description').value = '';
+    document.getElementById('scheduled-amount').value = '';
+    document.getElementById('scheduled-day').value = '';
+    updateScheduledCategoryOptions();
+}
+
+function updateScheduledCategoryOptions() {
+    const type = document.getElementById('scheduled-type').value;
+    const categorySelect = document.getElementById('scheduled-category');
+    const categoryRow = document.getElementById('scheduled-category-row');
+
+    if (type === 'expense') {
+        categoryRow.style.display = 'flex';
+        categorySelect.innerHTML = `
+            <option value="fisse">Spese Fisse</option>
+            <option value="variabili">Spese Variabili</option>
+            <option value="svago">Spese Svago</option>
+            <option value="risparmi">Risparmi</option>
+        `;
+        categorySelect.disabled = false;
+    } else {
+        // Per le entrate, nascondi la categoria
+        categoryRow.style.display = 'none';
+    }
+}
+
+async function saveScheduledTransaction() {
+    const type = document.getElementById('scheduled-type').value;
+    const category = type === 'income' ? 'income' : document.getElementById('scheduled-category').value;
+    const description = document.getElementById('scheduled-description').value.trim();
+    const amount = parseFloat(document.getElementById('scheduled-amount').value);
+    const dayOfMonth = parseInt(document.getElementById('scheduled-day').value);
+
+    // Validation
+    if (!description) {
+        alert('Inserisci una descrizione');
+        return;
+    }
+
+    if (isNaN(amount) || amount <= 0) {
+        alert('Inserisci un importo valido');
+        return;
+    }
+
+    if (isNaN(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
+        alert('Inserisci un giorno valido (1-31)');
+        return;
+    }
+
+    try {
+        if (window.electronAPI) {
+            const success = await window.electronAPI.addScheduledTransaction({
+                type,
+                category,
+                description,
+                amount,
+                dayOfMonth
+            });
+
+            if (success) {
+                console.log('Transazione programmata salvata con successo');
+                closeScheduledModal();
+                await loadScheduledTransactions();
+
+                // Processa immediatamente se è il giorno giusto
+                const today = new Date().getDate();
+                if (today === dayOfMonth) {
+                    await window.electronAPI.processScheduledTransactions();
+                    // Ricarica le transazioni normali se siamo in quella tab
+                    const activeTab = document.querySelector('.finance-tab-btn.active');
+                    if (activeTab && activeTab.getAttribute('data-tab') === 'transactions') {
+                        await loadTransactions();
+                    }
+                }
+            } else {
+                alert('Errore durante il salvataggio della transazione programmata');
+            }
+        }
+    } catch (error) {
+        console.error('Errore salvataggio transazione programmata:', error);
+        alert('Errore durante il salvataggio della transazione programmata');
+    }
+}
+
+async function loadScheduledTransactions() {
+    try {
+        if (window.electronAPI) {
+            scheduledTransactions = await window.electronAPI.getScheduledTransactions();
+            displayScheduledTransactions();
+        }
+    } catch (error) {
+        console.error('Errore caricamento transazioni programmate:', error);
+    }
+}
+
+function displayScheduledTransactions() {
+    const incomeList = document.getElementById('scheduled-income-list');
+    const expensesList = document.getElementById('scheduled-expenses-list');
+
+    // Separa entrate e uscite
+    const incomeTransactions = scheduledTransactions.filter(t => t.type === 'income');
+    const expenseTransactions = scheduledTransactions.filter(t => t.type === 'expense');
+
+    // Display entrate
+    if (incomeTransactions.length === 0) {
+        incomeList.innerHTML = `
+            <div class="empty-scheduled">
+                <p>Nessuna entrata programmata</p>
+                <small>Clicca il pulsante in alto per aggiungerne una</small>
+            </div>
+        `;
+    } else {
+        incomeList.innerHTML = incomeTransactions.map(t => createScheduledItemHTML(t)).join('');
+    }
+
+    // Display uscite
+    if (expenseTransactions.length === 0) {
+        expensesList.innerHTML = `
+            <div class="empty-scheduled">
+                <p>Nessuna uscita programmata</p>
+                <small>Clicca il pulsante in alto per aggiungerne una</small>
+            </div>
+        `;
+    } else {
+        expensesList.innerHTML = expenseTransactions.map(t => createScheduledItemHTML(t)).join('');
+    }
+}
+
+function createScheduledItemHTML(transaction) {
+    const amountClass = transaction.type === 'income' ? 'income' : 'expense';
+    const amountPrefix = transaction.type === 'income' ? '+' : '-';
+    const lastExecutedText = transaction.lastExecuted ?
+        `Ultima esecuzione: ${new Date(transaction.lastExecuted).toLocaleDateString('it-IT')}` :
+        'Mai eseguita';
+
+    const categoryHTML = transaction.type === 'expense' ?
+        `<span class="scheduled-item-category ${transaction.category}">${getCategoryDisplayName(transaction.category)}</span>` :
+        '';
+
+    return `
+        <div class="scheduled-item">
+            <div class="scheduled-item-info">
+                <div class="scheduled-item-header">
+                    <span class="scheduled-item-description">${transaction.description}</span>
+                    ${categoryHTML}
+                </div>
+                <div class="scheduled-item-details">
+                    <span class="scheduled-item-amount ${amountClass}">${amountPrefix}€${transaction.amount.toFixed(2)}</span>
+                    <span class="scheduled-item-day">📅 Giorno ${transaction.dayOfMonth}</span>
+                </div>
+                <small class="last-executed">${lastExecutedText}</small>
+            </div>
+            <div class="scheduled-item-actions">
+                <button class="scheduled-delete-btn" onclick="deleteScheduledTransaction('${transaction._id}')">🗑️</button>
+            </div>
+        </div>
+    `;
+}
+
+async function deleteScheduledTransaction(transactionId) {
+    if (!confirm('Sei sicuro di voler eliminare questa transazione programmata?')) {
+        return;
+    }
+
+    try {
+        if (window.electronAPI) {
+            const success = await window.electronAPI.deleteScheduledTransaction(transactionId);
+
+            if (success) {
+                console.log('Transazione programmata eliminata con successo');
+                await loadScheduledTransactions();
+            } else {
+                alert('Errore durante l\'eliminazione della transazione programmata');
+            }
+        }
+    } catch (error) {
+        console.error('Errore eliminazione transazione programmata:', error);
+        alert('Errore durante l\'eliminazione della transazione programmata');
+    }
+}
+
+// Aggiungi questa funzione al window per renderla accessibile dall'HTML
+window.deleteScheduledTransaction = deleteScheduledTransaction;
 
 window.selectPokemonForPurchase = selectPokemonForPurchase;
 window.deletePurchase = deletePurchase;

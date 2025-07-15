@@ -69,6 +69,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getSpendingInsights: () =>
     ipcRenderer.invoke('get-spending-insights'),
+
+  // Scheduled Transactions
+  addScheduledTransaction: (scheduledData: {
+    type: 'income' | 'expense',
+    category: string,
+    description: string,
+    amount: number,
+    dayOfMonth: number
+  }) => ipcRenderer.invoke('add-scheduled-transaction', scheduledData),
+
+  getScheduledTransactions: () =>
+    ipcRenderer.invoke('get-scheduled-transactions'),
+
+  deleteScheduledTransaction: (transactionId: string) =>
+    ipcRenderer.invoke('delete-scheduled-transaction', transactionId),
+
+  processScheduledTransactions: () =>
+    ipcRenderer.invoke('process-scheduled-transactions'),
 });
 
 declare global {
@@ -147,6 +165,36 @@ declare global {
         insights: string[],
         comparisonMonth: string
       } | null>;
+
+      // Scheduled Transactions
+      addScheduledTransaction: (scheduledData: {
+        type: 'income' | 'expense',
+        category: string,
+        description: string,
+        amount: number,
+        dayOfMonth: number
+      }) => Promise<boolean>;
+
+      getScheduledTransactions: () => Promise<Array<{
+        _id: string,
+        type: 'income' | 'expense',
+        category: string,
+        description: string,
+        amount: number,
+        dayOfMonth: number,
+        isActive: boolean,
+        createdAt: Date,
+        updatedAt: Date,
+        lastExecuted: Date | null
+      }>>;
+
+      deleteScheduledTransaction: (transactionId: string) => Promise<boolean>;
+
+      processScheduledTransactions: () => Promise<{
+        success: boolean,
+        processedCount: number,
+        message: string
+      }>;
     };
   }
 }

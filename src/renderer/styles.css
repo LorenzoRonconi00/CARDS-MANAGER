@@ -1279,6 +1279,7 @@ body {
     color: #ccc;
     font-size: 0.9rem;
     margin-bottom: 10px;
+    background-color: transparent;
 }
 
 .balance-value {
@@ -1286,6 +1287,7 @@ body {
     font-weight: bold;
     margin: 0;
     color: white;
+    background-color: transparent;
 }
 
 .balance-value.income {
@@ -1391,6 +1393,233 @@ body {
 
 .transaction-delete-btn:hover {
     background: #c82333;
+}
+
+/* Scheduled Transactions Styles */
+.scheduled-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.add-scheduled-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.add-scheduled-btn:hover {
+    background: #138496;
+}
+
+.scheduled-info {
+    color: #ccc;
+    font-size: 0.9rem;
+    background-color: transparent;
+}
+
+.info-text {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background-color: transparent;
+}
+
+/* Scheduled Sections */
+.scheduled-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.scheduled-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.section-title {
+    color: white;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: transparent;
+}
+
+.scheduled-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: transparent;
+}
+
+/* Scheduled Item */
+.scheduled-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 15px;
+    align-items: start;
+    transition: all 0.2s ease;
+}
+
+.scheduled-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.scheduled-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background-color: transparent;
+}
+
+.scheduled-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: transparent;
+}
+
+.scheduled-item-description {
+    color: white;
+    font-weight: 500;
+    font-size: 1rem;
+    background-color: transparent;
+}
+
+.scheduled-item-category {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: white;
+}
+
+.scheduled-item-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: #ccc;
+    font-size: 0.85rem;
+    background-color: transparent;
+}
+
+.scheduled-item-amount {
+    color: white;
+    font-weight: bold;
+    font-size: 1.1rem;
+    background-color: transparent;
+}
+
+.scheduled-item-amount.income {
+    color: #28a745;
+    background-color: transparent;
+}
+
+.scheduled-item-amount.expense {
+    color: #dc3545;
+    background-color: transparent;
+}
+
+.scheduled-item-day {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background-color: transparent;
+}
+
+.scheduled-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.scheduled-delete-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.scheduled-delete-btn:hover {
+    background: #c82333;
+}
+
+.last-executed {
+    color: #28a745;
+    font-size: 0.8rem;
+    background-color: transparent;
+}
+
+/* Empty State */
+.empty-scheduled {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    background-color: transparent;
+}
+
+.empty-scheduled p {
+    margin-bottom: 10px;
+    background-color: transparent;
+}
+
+.empty-scheduled small {
+    background-color: transparent;
+}
+
+/* Scheduled Form */
+.scheduled-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-info {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 6px;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.form-info small {
+    color: #ffc107;
+    display: block;
+    line-height: 1.4;
+    background-color: transparent;
+}
+
+.save-scheduled-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    margin-top: 10px;
+}
+
+.save-scheduled-btn:hover {
+    background: #138496;
 }
 
 /* Budget Overview Styles */
@@ -1893,6 +2122,25 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+    .scheduled-sections {
+        grid-template-columns: 1fr;
+    }
+
+    .scheduled-controls {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .scheduled-item {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .scheduled-item-actions {
+        justify-content: flex-end;
+    }
+
     .comparison-cards {
         grid-template-columns: 1fr;
     }
