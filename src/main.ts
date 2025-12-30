@@ -2,8 +2,6 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import * as path from 'path';
 import { MongoClient, ObjectId } from 'mongodb';
 
-const MONGODB_URI = 'mongodb+srv://patatinaman:sY3frCAoyRHJ1noF@cluster0.leglybo.mongodb.net/';
-const DATABASE_NAME = 'pokemon_collection';
 
 let mainWindow: BrowserWindow;
 let mongoClient: MongoClient;
@@ -21,13 +19,11 @@ function createWindow() {
 
     mainWindow.loadFile(path.join(__dirname, '../src/renderer/index.html'));
 
-    // Check scheduled transactions after window is created
     mainWindow.webContents.once('did-finish-load', () => {
         checkScheduledTransactions();
     });
 }
 
-// Connessione MongoDB
 async function connectToDatabase() {
     try {
         mongoClient = new MongoClient(MONGODB_URI);
@@ -110,7 +106,6 @@ ipcMain.handle('search-pokemon', async (_, query: string) => {
             searchConditions.push({ id: numQuery });
         }
 
-        // Cerca per nome (case insensitive)
         searchConditions.push({
             name: { $regex: query, $options: 'i' }
         });
@@ -158,7 +153,6 @@ ipcMain.handle('update-pokemon-price', async (_, pokemonId: number, price: numbe
             { $set: { price: price } }
         );
 
-        // Verifica se il documento è stato trovato E modificato
         const success = result.matchedCount > 0;
 
         return success;
@@ -234,7 +228,6 @@ ipcMain.handle('get-purchases', async (_, sortBy: string = 'date') => {
 
         const purchases = await collection.find({}).sort(sortOption).toArray();
 
-        // Converti _id in stringa per ogni acquisto
         const purchasesWithStringId = purchases.map(purchase => ({
             ...purchase,
             _id: purchase._id.toString()
@@ -250,7 +243,6 @@ ipcMain.handle('get-purchases', async (_, sortBy: string = 'date') => {
 // Delete purchase
 ipcMain.handle('delete-purchase', async (_, purchaseId: string) => {
     try {
-        // Valida che l'ID sia un ObjectId valido
         if (!ObjectId.isValid(purchaseId)) {
             console.error('ID ObjectId non valido:', purchaseId);
             return false;
@@ -274,11 +266,10 @@ ipcMain.handle('delete-all-purchases', async () => {
         const db = mongoClient.db(DATABASE_NAME);
         const collection = db.collection('purchases');
 
-        // Prima conta i documenti
         const count = await collection.countDocuments();
 
         if (count === 0) {
-            return false; // Nessun documento da eliminare
+            return false;
         }
 
         const result = await collection.deleteMany({});
@@ -332,7 +323,6 @@ ipcMain.handle('get-planned-purchases', async () => {
             .sort({ plannedDate: 1 })
             .toArray();
 
-        // Convert _id to string and group by date
         const groupedPurchases: { [date: string]: any[] } = {};
 
         plannedPurchases.forEach(purchase => {
@@ -389,7 +379,6 @@ ipcMain.handle('complete-planned-purchases', async (_, data: {
         const plannedCollection = db.collection('planned_purchases');
         const purchasesCollection = db.collection('purchases');
 
-        // Get all pending purchases for this date
         const pendingPurchases = await plannedCollection
             .find({ plannedDate: data.plannedDate, status: 'pending' })
             .toArray();
@@ -398,10 +387,8 @@ ipcMain.handle('complete-planned-purchases', async (_, data: {
             return { success: false, message: 'Nessun acquisto programmato trovato' };
         }
 
-        // Calculate price per pokemon
         const pricePerPokemon = data.totalPrice / pendingPurchases.length;
 
-        // Create actual purchases
         const purchasesToInsert = pendingPurchases.map(planned => ({
             pokemonId: planned.pokemonId,
             pokemonName: planned.pokemonName,
@@ -412,11 +399,9 @@ ipcMain.handle('complete-planned-purchases', async (_, data: {
             originalPlannedDate: planned.plannedDate
         }));
 
-        // Insert purchases
         const insertResult = await purchasesCollection.insertMany(purchasesToInsert);
 
         if (insertResult.insertedCount > 0) {
-            // Update planned purchases status
             await plannedCollection.updateMany(
                 { plannedDate: data.plannedDate, status: 'pending' },
                 {
@@ -501,7 +486,7 @@ ipcMain.handle('add-transaction', async (_, transactionData: {
             description: transactionData.description,
             amount: transactionData.amount,
             date: new Date(transactionData.date),
-            month: transactionData.date.substring(0, 7), // "YYYY-MM"
+            month: transactionData.date.substring(0, 7),
             createdAt: new Date(),
             updatedAt: new Date()
         };
@@ -525,15 +510,12 @@ ipcMain.handle('get-transactions', async (_, filters?: {
         const db = mongoClient.db(DATABASE_NAME);
         const collection = db.collection('transactions');
 
-        // Build query
         let query: any = {};
 
         if (filters) {
-            // Se filtro per categoria "income", filtriamo per type = 'income'
             if (filters.category === 'income') {
                 query.type = 'income';
             }
-            // Se filtro per altre categorie, filtriamo per category specifica E type = 'expense'
             else if (filters.category && filters.category !== 'all') {
                 query.category = filters.category;
                 query.type = 'expense';
@@ -543,11 +525,10 @@ ipcMain.handle('get-transactions', async (_, filters?: {
                 query.month = filters.month;
             }
 
-            // Non usiamo più filters.type perché è gestito dalla categoria
         }
 
         // Build sort
-        let sortOption: any = { date: -1 }; // Default: newest first
+        let sortOption: any = { date: -1 };
 
         if (filters?.sortBy) {
             switch (filters.sortBy) {
@@ -568,7 +549,6 @@ ipcMain.handle('get-transactions', async (_, filters?: {
 
         const transactions = await collection.find(query).sort(sortOption).toArray();
 
-        // Convert _id to string
         const transactionsWithStringId = transactions.map(transaction => ({
             ...transaction,
             _id: transaction._id.toString()
@@ -607,12 +587,10 @@ ipcMain.handle('get-financial-stats', async (_, month?: string) => {
         const db = mongoClient.db(DATABASE_NAME);
         const collection = db.collection('transactions');
 
-        // Use current month if not specified
         const targetMonth = month || new Date().toISOString().substring(0, 7);
 
         const transactions = await collection.find({ month: targetMonth }).toArray();
 
-        // Calculate stats
         const income = transactions
             .filter(t => t.type === 'income')
             .reduce((sum, t) => sum + t.amount, 0);
@@ -621,7 +599,6 @@ ipcMain.handle('get-financial-stats', async (_, month?: string) => {
             .filter(t => t.type === 'expense')
             .reduce((sum, t) => sum + t.amount, 0);
 
-        // Calculate expenses by category
         const expensesByCategory = {
             fisse: 0,
             variabili: 0,
@@ -666,10 +643,9 @@ ipcMain.handle('get-budget-settings', async () => {
 
         const settings = await collection.findOne({});
 
-        // Return default settings if none found
         if (!settings) {
             return {
-                monthlyBudget: 2500, // Default
+                monthlyBudget: 2500,
                 percentages: {
                     fisse: 40,
                     variabili: 30,
@@ -702,13 +678,13 @@ ipcMain.handle('update-budget-settings', async (_, settings: {
         const collection = db.collection('budget_settings');
 
         const result = await collection.replaceOne(
-            {}, // Match any document (since we only have one settings doc)
+            {},
             {
                 monthlyBudget: settings.monthlyBudget,
                 percentages: settings.percentages,
                 updatedAt: new Date()
             },
-            { upsert: true } // Create if doesn't exist
+            { upsert: true }
         );
 
         return result.acknowledged;
@@ -724,7 +700,6 @@ ipcMain.handle('get-historical-financial-data', async (_, monthsBack: number = 1
         const db = mongoClient.db(DATABASE_NAME);
         const collection = db.collection('transactions');
 
-        // Calculate months to analyze
         const currentDate = new Date();
         const months = [];
 
@@ -734,12 +709,10 @@ ipcMain.handle('get-historical-financial-data', async (_, monthsBack: number = 1
             months.push(monthString);
         }
 
-        // Get all transactions for these months
         const transactions = await collection.find({
             month: { $in: months }
         }).toArray();
 
-        // Group by month and calculate stats
         const monthlyData: { [month: string]: any } = {};
 
         months.forEach(month => {
@@ -753,7 +726,6 @@ ipcMain.handle('get-historical-financial-data', async (_, monthsBack: number = 1
                 .filter(t => t.type === 'expense')
                 .reduce((sum, t) => sum + t.amount, 0);
 
-            // Calculate expenses by category
             const expensesByCategory = {
                 fisse: 0,
                 variabili: 0,
@@ -776,7 +748,7 @@ ipcMain.handle('get-historical-financial-data', async (_, monthsBack: number = 1
                 netBalance: income - expenses,
                 expensesByCategory,
                 transactionCount: monthTransactions.length,
-                savings: income - expenses, // Net savings for the month
+                savings: income - expenses,
                 expensePercentages: income > 0 ? {
                     fisse: (expensesByCategory.fisse / income) * 100,
                     variabili: (expensesByCategory.variabili / income) * 100,
@@ -804,17 +776,14 @@ ipcMain.handle('get-spending-insights', async () => {
         const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
             .toISOString().substring(0, 7);
 
-        // Get current and last month data
         const [currentMonthTransactions, lastMonthTransactions] = await Promise.all([
             collection.find({ month: currentMonth }).toArray(),
             collection.find({ month: lastMonth }).toArray()
         ]);
 
-        // Calculate current month stats
         const currentStats = calculateMonthStats(currentMonthTransactions);
         const lastStats = calculateMonthStats(lastMonthTransactions);
 
-        // Calculate trends (percentage change)
         const trends = {
             income: calculatePercentageChange(lastStats.totalIncome, currentStats.totalIncome),
             expenses: calculatePercentageChange(lastStats.totalExpenses, currentStats.totalExpenses),
@@ -827,7 +796,6 @@ ipcMain.handle('get-spending-insights', async () => {
             }
         };
 
-        // Generate insights
         const insights = generateInsights(currentStats, lastStats, trends);
 
         return {
@@ -884,7 +852,6 @@ ipcMain.handle('get-scheduled-transactions', async () => {
 
         const scheduledTransactions = await collection.find({ isActive: true }).toArray();
 
-        // Convert _id to string
         const transactionsWithStringId = scheduledTransactions.map(transaction => ({
             ...transaction,
             _id: transaction._id.toString()
@@ -908,7 +875,6 @@ ipcMain.handle('delete-scheduled-transaction', async (_, transactionId: string) 
         const db = mongoClient.db(DATABASE_NAME);
         const collection = db.collection('scheduled_transactions');
 
-        // Instead of deleting, we mark it as inactive
         const result = await collection.updateOne(
             { _id: new ObjectId(transactionId) },
             { $set: { isActive: false, updatedAt: new Date() } }
@@ -932,7 +898,6 @@ ipcMain.handle('process-scheduled-transactions', async () => {
         const currentDay = today.getDate();
         const currentMonth = today.toISOString().substring(0, 7);
 
-        // Get all active scheduled transactions for today
         const scheduledTransactions = await scheduledCollection.find({
             isActive: true,
             dayOfMonth: currentDay
@@ -941,7 +906,6 @@ ipcMain.handle('process-scheduled-transactions', async () => {
         let processedCount = 0;
 
         for (const scheduled of scheduledTransactions) {
-            // Check if we already executed this scheduled transaction this month
             const lastExecutedMonth = scheduled.lastExecuted
                 ? new Date(scheduled.lastExecuted).toISOString().substring(0, 7)
                 : null;
@@ -951,7 +915,6 @@ ipcMain.handle('process-scheduled-transactions', async () => {
                 continue;
             }
 
-            // Create the actual transaction
             const transaction = {
                 type: scheduled.type,
                 category: scheduled.category,
@@ -968,7 +931,6 @@ ipcMain.handle('process-scheduled-transactions', async () => {
             const result = await transactionsCollection.insertOne(transaction);
 
             if (result.insertedId) {
-                // Update the scheduled transaction with last executed date
                 await scheduledCollection.updateOne(
                     { _id: scheduled._id },
                     { $set: { lastExecuted: today } }
@@ -1064,7 +1026,7 @@ function generateInsights(current: any, last: any, trends: any): string[] {
             const percentage = (amount / current.totalIncome) * 100;
             const targetPercentage = budgetPercentages[category as keyof typeof budgetPercentages];
 
-            if (percentage > targetPercentage * 1.2) { // 20% over budget
+            if (percentage > targetPercentage * 1.2) {
                 const categoryName = getCategoryName(category);
                 insights.push(`🚨 Hai sforato il budget per ${categoryName}: ${percentage.toFixed(1)}% vs ${targetPercentage}% target.`);
             }
